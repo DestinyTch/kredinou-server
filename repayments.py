@@ -10,8 +10,7 @@ from flask_cors import CORS
 
 # Blueprint
 repayments_bp = Blueprint("repayments", __name__)
-CORS(repayments_bp, resources={r"/*": {"origins": "*"}})
-
+CORS(repayments_bp, origins="*", supports_credentials=True)
 # Mongo collections
 # Initialize database connection
 db = get_db()
