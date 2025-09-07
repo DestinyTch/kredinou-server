@@ -201,7 +201,7 @@ def register():
             'updated_at': datetime.now(timezone.utc),
             'documents': [],
             'face_image': None,
-            'loan_limit': 2000,
+            'loan_limit': 100000,
             'verification_status': 'unverified'
         }
 
@@ -339,7 +339,7 @@ def get_profile(current_user):
             "last_name": current_user.get("last_name", ""),
             "email": current_user.get("email", ""),
             "phone": current_user.get("phone", ""),
-            "loan_limit": current_user.get("loan_limit", 2000),
+            "loan_limit": current_user.get("loan_limit", 100000),
             "status": current_user.get("status", ""),
             "face_image": current_user.get("face_image", {}).get("url") if current_user.get("face_image") else None,
             "documents": current_user.get("documents", [])
@@ -541,5 +541,6 @@ def print_banner():
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
