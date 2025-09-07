@@ -29,14 +29,7 @@ from decorators import token_required
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["http://destinytch.com.ng", "http://kredinou.destinytch.com.ng"],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True
-    }
-})
+CORS(app)
 # App config
 app.config.update({
     "SECRET_KEY": os.getenv("SECRET_KEY"),
@@ -548,4 +541,5 @@ def print_banner():
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
