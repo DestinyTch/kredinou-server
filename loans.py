@@ -58,7 +58,7 @@ def _cors_error(message, status):
 def apply_for_loan_options():
     """Handle CORS preflight for loan application."""
     response = jsonify()
-    response.headers.add('Access-Control-Allow-Origin', 'https://kredinou.destinytch.com.ng')
+    response.headers.add('Access-Control-Allow-Origin', 'https://destinytch.com.ng')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
@@ -433,3 +433,4 @@ def get_all_loans(current_user):
             "message": str(e)
 
         }), 500
+
