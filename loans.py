@@ -48,7 +48,7 @@ loans_bp = Blueprint('loans', __name__, url_prefix='/api/loans')
 # --- Helper for CORS-friendly error responses (defined before routes) ---
 def _cors_error(message, status):
     resp = jsonify({"error": message})
-    resp.headers.add('Access-Control-Allow-Origin', 'https://kredinou.destinytch.com.ng')
+    resp.headers.add('Access-Control-Allow-Origin', 'https://destinytch.com.ng')
     resp.headers.add('Access-Control-Allow-Credentials', 'true')
     return resp, status
 
@@ -202,7 +202,7 @@ def apply_for_loan(current_user):
         }
 
         response = jsonify(response_data)
-        response.headers.add('Access-Control-Allow-Origin', 'https://kredinou.destinytch.com.ng')
+        response.headers.add('Access-Control-Allow-Origin', 'https://destinytch.com.ng')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 201
 
@@ -433,4 +433,5 @@ def get_all_loans(current_user):
             "message": str(e)
 
         }), 500
+
 
