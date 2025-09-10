@@ -2,7 +2,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from bson import ObjectId
 from extensions import get_db
-from decorators import admin_token_required  # <-- new decorator to restrict admin routes
+ # <-- new decorator to restrict admin routes
 from flask_cors import CORS
 
 # Blueprint
@@ -175,7 +175,7 @@ def repayment_history():
 # WITHDRAWALS ROUTES
 # -----------------------------
 @admin_repayments_bp.route("/withdrawals", methods=["GET"])
-@admin_token_required
+
 def list_withdrawals(current_admin):
     try:
         withdrawals = withdrawals_collection.find().sort("requested_at", -1)
@@ -203,7 +203,7 @@ def list_withdrawals(current_admin):
         return jsonify({"error": str(e)}), 500
 
 @admin_repayments_bp.route("/withdrawals/<withdrawal_id>", methods=["PATCH"])
-@admin_token_required
+
 def update_withdrawal(current_admin, withdrawal_id):
     try:
         data = request.json
@@ -237,7 +237,7 @@ def update_withdrawal(current_admin, withdrawal_id):
         return jsonify({"error": str(e)}), 500
 
 @admin_repayments_bp.route("/withdrawals/history", methods=["GET"])
-@admin_token_required
+
 def withdrawals_history(current_admin):
     try:
         withdrawals = withdrawals_collection.find().sort("requested_at", -1)
