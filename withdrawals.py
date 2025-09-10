@@ -5,6 +5,7 @@ from extensions import get_db
 from decorators import token_required
 import logging
 from flask_cors import CORS
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -15,13 +16,38 @@ withdrawals_collection = db.withdrawals
 
 # Create blueprint
 withdrawals_bp = Blueprint('withdrawals', __name__, url_prefix='/api/withdrawals')
-CORS(withdrawals_bp, resources={r"/*": {"origins": "*"}})
-# GET withdrawal history for current user
+CORS(withdrawals_bp, origins="*", supports_credentials=True)
+
+# -----------------------------
+# Route: Get withdrawal balance
+# -----------------------------
+@withdrawals_bp.route('/balance', methods=['GET'])
+@token_required
+def get_balance(current_user):
+    try:
+        user_id = current_user['_id']  # Assuming _id is used like in repayments_bp
+
+        # Only include loans that are disbursed
+        loans = list(loans_collection.find({
+            "userId": user_id,
+            "status": "disbursed"  # Only disbursed loans
+        }))
+
+        total_balance = sum(loan.get("amount", 0) for loan in loans)
+        return jsonify({"balance": total_balance}), 200
+
+    except Exception as e:
+        logger.exception("Error fetching balance")
+        return jsonify({"error": "Internal server error"}), 500
+
+# -----------------------------
+# Route: Get withdrawal history
+# -----------------------------
 @withdrawals_bp.route('/history', methods=['GET'])
 @token_required
 def get_withdrawal_history(current_user):
     try:
-        user_id = current_user['id']  # Assuming your token returns this
+        user_id = current_user['_id']
         withdrawals = list(withdrawals_collection.find({'userId': user_id}).sort('requested_at', -1))
 
         # Format for frontend
@@ -43,13 +69,14 @@ def get_withdrawal_history(current_user):
         logger.exception("Error fetching withdrawal history")
         return jsonify({"error": "Failed to fetch history"}), 500
 
-
-# POST create a new withdrawal
+# -----------------------------
+# Route: Create a new withdrawal
+# -----------------------------
 @withdrawals_bp.route('', methods=['POST'])
 @token_required
 def create_withdrawal(current_user):
     try:
-        user_id = current_user['id']
+        user_id = current_user['_id']
         data = request.get_json()
 
         # Validate required fields
@@ -73,10 +100,10 @@ def create_withdrawal(current_user):
         account_name = data['accountName']
         account_number = data['accountNumber']
 
-        # Calculate withdrawable balance from loans with status "disbursed"
+        # Calculate withdrawable balance from disbursed loans
         loans = list(loans_collection.find({
             "userId": user_id,
-            "status": "disbursed"  # Only disbursed loans count
+            "status": "disbursed"
         }))
         available_balance = sum(loan['amount'] for loan in loans)
 
@@ -104,11 +131,3 @@ def create_withdrawal(current_user):
     except Exception as e:
         logger.exception("Error creating withdrawal")
         return jsonify({"error": "Failed to create withdrawal"}), 500
-@withdrawals_bp.route('/balance', methods=['GET'])
-@token_required
-def get_balance(current_user):
-    user_id = current_user['id']
-    loans = list(loans_collection.find({"userId": user_id, "status": "disbursed"}))
-    available_balance = sum(loan['amount'] for loan in loans)
-    return jsonify({"balance": available_balance}), 200
-
