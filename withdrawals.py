@@ -4,7 +4,7 @@ from bson import ObjectId
 from extensions import get_db
 from decorators import token_required
 import logging
-
+from flask_cors import CORS
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ withdrawals_collection = db.withdrawals
 # Create blueprint
 withdrawals_bp = Blueprint('withdrawals', __name__, url_prefix='/api/withdrawals')
 
-
+CORS(app, resources={r"/api/*": {"origins": "*"}}) 
 # GET withdrawal history for current user
 @withdrawals_bp.route('/history', methods=['GET'])
 @token_required
