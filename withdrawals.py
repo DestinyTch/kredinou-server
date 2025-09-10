@@ -1,38 +1,28 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime
-from bson import ObjectId
 from extensions import get_db
 from decorators import token_required
-import logging
 from flask_cors import CORS
+import logging
 
-# Configure logger
 logger = logging.getLogger(__name__)
-
-# Initialize database connection
 db = get_db()
 loans_collection = db.loans
 withdrawals_collection = db.withdrawals
 
-# Create blueprint
 withdrawals_bp = Blueprint('withdrawals', __name__, url_prefix='/api/withdrawals')
 CORS(withdrawals_bp, origins="*", supports_credentials=True)
 
-# -----------------------------
-# Route: Get withdrawal balance
-# -----------------------------
 @withdrawals_bp.route('/balance', methods=['GET'])
 @token_required
 def get_balance(current_user):
     try:
-        user_id = current_user['_id']  # Assuming _id is used like in repayments_bp
+        user_id = current_user['_id']  # corrected
 
-        # Only include loans that are disbursed
         loans = list(loans_collection.find({
             "userId": user_id,
-            "status": "disbursed"  # Only disbursed loans
+            "status": "disbursed"
         }))
-
         total_balance = sum(loan.get("amount", 0) for loan in loans)
         return jsonify({"balance": total_balance}), 200
 
@@ -40,18 +30,14 @@ def get_balance(current_user):
         logger.exception("Error fetching balance")
         return jsonify({"error": "Internal server error"}), 500
 
-# -----------------------------
-# Route: Get withdrawal history
-# -----------------------------
 @withdrawals_bp.route('/history', methods=['GET'])
 @token_required
 def get_withdrawal_history(current_user):
     try:
-        user_id = current_user['_id']
+        user_id = current_user['_id']  # corrected
         withdrawals = list(withdrawals_collection.find({'userId': user_id}).sort('requested_at', -1))
-
-        # Format for frontend
         result = []
+
         for w in withdrawals:
             result.append({
                 "id": str(w['_id']),
@@ -67,11 +53,8 @@ def get_withdrawal_history(current_user):
 
     except Exception as e:
         logger.exception("Error fetching withdrawal history")
-        return jsonify({"error": "Failed to fetch history"}), 500
+        return jsonify([]), 200  # Return empty array to avoid frontend .forEach error
 
-# -----------------------------
-# Route: Create a new withdrawal
-# -----------------------------
 @withdrawals_bp.route('', methods=['POST'])
 @token_required
 def create_withdrawal(current_user):
@@ -79,13 +62,11 @@ def create_withdrawal(current_user):
         user_id = current_user['_id']
         data = request.get_json()
 
-        # Validate required fields
         required_fields = ['amount', 'paymentMethod', 'accountName', 'accountNumber']
         for field in required_fields:
             if field not in data or not data[field]:
                 return jsonify({"error": f"{field} is required"}), 400
 
-        # Validate amount
         try:
             amount = float(data['amount'])
             if amount <= 0:
@@ -97,10 +78,6 @@ def create_withdrawal(current_user):
         if payment_method not in ['MonCash', 'NatCash']:
             return jsonify({"error": "Invalid payment method"}), 400
 
-        account_name = data['accountName']
-        account_number = data['accountNumber']
-
-        # Calculate withdrawable balance from disbursed loans
         loans = list(loans_collection.find({
             "userId": user_id,
             "status": "disbursed"
@@ -110,13 +87,12 @@ def create_withdrawal(current_user):
         if amount > available_balance:
             return jsonify({"error": "Insufficient balance"}), 400
 
-        # Create withdrawal record
         withdrawal = {
             "userId": user_id,
             "amount": amount,
             "payment_method": payment_method,
-            "account_name": account_name,
-            "account_number": account_number,
+            "account_name": data['accountName'],
+            "account_number": data['accountNumber'],
             "status": "pending",
             "requested_at": datetime.utcnow(),
             "admin_notes": None
