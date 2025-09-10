@@ -15,8 +15,7 @@ withdrawals_collection = db.withdrawals
 
 # Create blueprint
 withdrawals_bp = Blueprint('withdrawals', __name__, url_prefix='/api/withdrawals')
-
-CORS(app, resources={r"/api/*": {"origins": "*"}}) 
+CORS(withdrawals_bp, resources={r"/*": {"origins": "*"}})
 # GET withdrawal history for current user
 @withdrawals_bp.route('/history', methods=['GET'])
 @token_required
