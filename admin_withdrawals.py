@@ -7,7 +7,13 @@ from flask_cors import CORS
 
 # Blueprint
 admin_withdrawals_bp = Blueprint("admin_withdrawals", __name__, url_prefix="/admin/withdrawals")
-CORS(admin_withdrawals_bp, resources={r"/*": {"origins": "https://destinytch.com.ng"}}, supports_credentials=True)
+# Enable CORS
+CORS(
+    admin_withdrawals_bp, 
+    resources={r"/*": {"origins": "https://destinytch.com.ng"}}, 
+    supports_credentials=True,
+    methods=["GET", "PATCH", "OPTIONS"]  # explicitly allow OPTIONS
+)
 
 # Collections
 db = get_db()
