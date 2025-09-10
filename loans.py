@@ -45,26 +45,6 @@ users_collection = db.users
 loans_bp = Blueprint('loans', __name__, url_prefix='/api/loans')
 
 
-# --- Helper for CORS-friendly error responses (defined before routes) ---
-def _cors_error(message, status):
-    resp = jsonify({"error": message})
-    resp.headers.add('Access-Control-Allow-Origin', 'https://destinytch.com.ng')
-    resp.headers.add('Access-Control-Allow-Credentials', 'true')
-    return resp, status
-
-
-# --- CORS Preflight (no authentication) ---
-@loans_bp.route('/apply', methods=['OPTIONS'])
-def apply_for_loan_options():
-    """Handle CORS preflight for loan application."""
-    response = jsonify()
-    response.headers.add('Access-Control-Allow-Origin', 'https://destinytch.com.ng')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response, 200
-
-
 # --- Loan Application (requires authentication) ---
 @loans_bp.route('/apply', methods=['POST'])
 @token_required
@@ -72,13 +52,13 @@ def apply_for_loan(current_user):
     try:
         data = request.get_json()
         if not data:
-            return _cors_error("No data provided", 400)
+            return jsonify({"error": "No data provided"}), 400
 
         # Required fields
         required_fields = ['loanType', 'amount', 'repaymentPeriod', 'purpose']
         missing_fields = [f for f in required_fields if f not in data]
         if missing_fields:
-            return _cors_error(f"Missing required fields: {', '.join(missing_fields)}", 400)
+            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
         # Validate amount
         try:
@@ -86,9 +66,9 @@ def apply_for_loan(current_user):
             if amount <= 0:
                 raise ValueError("Amount must be positive")
         except (ValueError, TypeError):
-            return _cors_error("Invalid amount format", 400)
+            return jsonify({"error": "Invalid amount format"}), 400
 
-        # Map repayment period labels to days
+        # Repayment period mapping
         period_map = {
             "1 Week": 7,
             "2 Weeks": 14,
@@ -119,13 +99,13 @@ def apply_for_loan(current_user):
                 else:
                     repayment_label = f"{months_val} Months"
             except Exception:
-                return _cors_error("Invalid repayment period format", 400)
+                return jsonify({"error": "Invalid repayment period format"}), 400
 
-        # Set application and due dates
+        # Application + due dates
         application_date = datetime.now(timezone.utc)
         due_date = application_date + timedelta(days=days_to_add)
 
-        # Build loan document including user info
+        # Loan document
         loan = {
             "userId": current_user["_id"],
             "user": {
@@ -164,25 +144,24 @@ def apply_for_loan(current_user):
         else:
             if data.get("disbursementMethod") == "natcash":
                 if not all([data.get("natcashAccount"), data.get("natcashName")]):
-                    return _cors_error("Missing Natcash account details", 400)
+                    return jsonify({"error": "Missing Natcash account details"}), 400
                 loan["disbursementDetails"] = {
                     "accountNumber": data.get("natcashAccount"),
                     "accountName": data.get("natcashName")
                 }
             elif data.get("disbursementMethod") == "moncash":
                 if not all([data.get("moncashPhone"), data.get("moncashName")]):
-                    return _cors_error("Missing Moncash account details", 400)
+                    return jsonify({"error": "Missing Moncash account details"}), 400
                 loan["disbursementDetails"] = {
                     "accountNumber": data.get("moncashPhone"),
                     "accountName": data.get("moncashName")
                 }
 
-        # Insert loan into DB
+        # Insert into DB
         result = loans_collection.insert_one(loan)
         loan["_id"] = str(result.inserted_id)
 
-        # Prepare response including user info
-        response_data = {
+        return jsonify({
             "message": "Loan application submitted successfully",
             "loan": {
                 "_id": loan["_id"],
@@ -197,18 +176,13 @@ def apply_for_loan(current_user):
                 "dueDate": loan["dueDate"].isoformat(),
                 "status": loan["status"],
                 "currency": loan["currency"],
-                "user": loan["user"]  # <-- include full user info
+                "user": loan["user"]
             }
-        }
-
-        response = jsonify(response_data)
-        response.headers.add('Access-Control-Allow-Origin', 'https://destinytch.com.ng')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response, 201
+        }), 201
 
     except Exception as e:
         logger.error(f"Loan creation error: {str(e)}", exc_info=True)
-        return _cors_error("Failed to process loan application", 500)
+        return jsonify({"error": "Failed to process loan application"}), 500
 
 
 
@@ -433,5 +407,6 @@ def get_all_loans(current_user):
             "message": str(e)
 
         }), 500
+
 
 
