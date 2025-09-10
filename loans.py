@@ -5,7 +5,7 @@ from flask_jwt_extended import get_current_user
 from extensions import get_db
 from decorators import token_required
 import logging
-
+from flask_cors import CORS
 # Initialize database connection
 db = get_db()
 loans_collection = db.loans
@@ -43,7 +43,15 @@ users_collection = db.users
 
 # Create blueprint
 loans_bp = Blueprint('loans', __name__, url_prefix='/api/loans')
-
+CORS(
+    loans_bp,
+    resources={r"/api/*": {"origins": [
+        "https://destinytch.com.ng",  # production
+        "http://localhost:8000",      # local dev
+        "http://127.0.0.1:8000"       # alt dev
+    ]}},
+    supports_credentials=True
+)
 
 # --- Loan Application (requires authentication) ---
 @loans_bp.route('/apply', methods=['POST'])
@@ -69,14 +77,17 @@ def apply_for_loan(current_user):
             return jsonify({"error": "Invalid amount format"}), 400
 
         # Repayment period mapping
-        period_map = {
-            "1 Week": 7,
-            "2 Weeks": 14,
-            "1 Month": 30,
-            "2 Months": 60,
-            "3 Months": 90,
-            "6 Months": 120,
-        }
+    period_map = {
+    "1 Week": 7,
+    "2 Weeks": 14,
+    "1 Month": 30,
+    "2 Months": 60,
+    "3 Months": 90,
+    "4 Months": 120,
+    "5 Months": 150,
+    "6 Months": 180
+};
+
 
         raw_period = data.get("repaymentPeriod")
         days_to_add = None
@@ -408,6 +419,7 @@ def get_all_loans(current_user):
             "message": str(e)
 
         }), 500
+
 
 
 
