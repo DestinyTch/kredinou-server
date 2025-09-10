@@ -16,7 +16,7 @@ from config import Config
 from admin import admin_bp
 from repayments import repayments_bp
 from admin_repayments import admin_repayments_bp
-
+from admin_withdrawals import admin_withdrawals_bp
 from dotenv import load_dotenv
 import bcrypt
 import jwt
@@ -524,6 +524,7 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(repayments_bp, url_prefix="/repayments")
 app.register_blueprint(admin_repayments_bp, url_prefix="/admin")
 app.register_blueprint(withdrawals_bp)
+app.register_blueprint(admin_withdrawals_bp)
 import os
 
 def print_banner():
@@ -541,6 +542,7 @@ def print_banner():
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
