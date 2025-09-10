@@ -105,3 +105,11 @@ def create_withdrawal(current_user):
     except Exception as e:
         logger.exception("Error creating withdrawal")
         return jsonify({"error": "Failed to create withdrawal"}), 500
+@withdrawals_bp.route('/balance', methods=['GET'])
+@token_required
+def get_balance(current_user):
+    user_id = current_user['id']
+    loans = list(loans_collection.find({"userId": user_id, "status": "disbursed"}))
+    available_balance = sum(loan['amount'] for loan in loans)
+    return jsonify({"balance": available_balance}), 200
+
