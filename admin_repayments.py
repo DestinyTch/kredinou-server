@@ -177,13 +177,13 @@ def list_withdrawals():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@admin_repayments_bp.route("/withdrawals/approve/<withdrawal_id>", methods=["PUT"])
+# Approve withdrawal
+@admin_repayments_bp.route("/withdrawals/approve/<withdrawal_id>", methods=["PUT", "OPTIONS"])
 @cross_origin(origins="https://destinytch.com.ng", supports_credentials=True)
 def approve_withdrawal(withdrawal_id):
     if request.method == "OPTIONS":
-        # Preflight request
-        return '', 200
+        return '', 200  # Preflight handled
+
     try:
         withdrawal = withdrawals_collection.find_one({"_id": ObjectId(withdrawal_id)})
         if not withdrawal:
@@ -202,11 +202,13 @@ def approve_withdrawal(withdrawal_id):
         return jsonify({"error": str(e)}), 500
 
 
-@admin_repayments_bp.route("/withdrawals/reject/<withdrawal_id>", methods=["PUT"])
+# Reject withdrawal
+@admin_repayments_bp.route("/withdrawals/reject/<withdrawal_id>", methods=["PUT", "OPTIONS"])
 @cross_origin(origins="https://destinytch.com.ng", supports_credentials=True)
 def reject_withdrawal(withdrawal_id):
     if request.method == "OPTIONS":
-        return '', 200
+        return '', 200  # Preflight handled
+
     try:
         reason = request.json.get("reason", "No reason provided")
         withdrawal = withdrawals_collection.find_one({"_id": ObjectId(withdrawal_id)})
@@ -219,3 +221,4 @@ def reject_withdrawal(withdrawal_id):
         return jsonify({"message": "Withdrawal rejected", "status": "rejected", "reason": reason}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
