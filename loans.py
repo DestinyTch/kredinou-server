@@ -74,7 +74,8 @@ def apply_for_loan(current_user):
             "2 Weeks": 14,
             "1 Month": 30,
             "2 Months": 60,
-            "3 Months": 90
+            "3 Months": 90,
+            "6 Months": 120,
         }
 
         raw_period = data.get("repaymentPeriod")
@@ -407,6 +408,7 @@ def get_all_loans(current_user):
             "message": str(e)
 
         }), 500
+
 
 
 
