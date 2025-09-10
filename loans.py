@@ -60,13 +60,13 @@ def apply_for_loan(current_user):
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"error": "No data provided"}), 400
+            return _cors_error("No data provided", 400)
 
         # Required fields
         required_fields = ['loanType', 'amount', 'repaymentPeriod', 'purpose']
         missing_fields = [f for f in required_fields if f not in data]
         if missing_fields:
-            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+            return _cors_error(f"Missing required fields: {', '.join(missing_fields)}", 400)
 
         # Validate amount
         try:
@@ -74,19 +74,20 @@ def apply_for_loan(current_user):
             if amount <= 0:
                 raise ValueError("Amount must be positive")
         except (ValueError, TypeError):
-            return jsonify({"error": "Invalid amount format"}), 400
+            return _cors_error("Invalid amount format", 400)
 
-        # Repayment period mapping
-    period_map = {
-    "1 Week": 7,
-    "2 Weeks": 14,
-    "1 Month": 30,
-    "2 Months": 60,
-    "3 Months": 90,
-    "4 Months": 120,
-    "5 Months": 150,
-    "6 Months": 180
-};
+        # Map repayment period labels to days
+        period_map = {
+            "1 Week": 7,
+            "2 Weeks": 14,
+            "1 Month": 30,
+            "2 Months": 60,
+            "3 Months": 90,
+            "4 Months": 120,
+            "5 Months": 150,
+            "6 Months": 180
+        }
+
 
 
         raw_period = data.get("repaymentPeriod")
@@ -419,6 +420,7 @@ def get_all_loans(current_user):
             "message": str(e)
 
         }), 500
+
 
 
 
