@@ -7,7 +7,7 @@ from flask_cors import CORS
 
 # Blueprint
 admin_withdrawals_bp = Blueprint("admin_withdrawals", __name__, url_prefix="/admin/withdrawals")
-CORS(admin_withdrawals_bp, resources={r"/*": {"origins": "*"}})
+CORS(admin_repayments_bp, resources={r"/*": {"origins": "https://destinytch.com.ng"}}, supports_credentials=True)
 
 # Collections
 db = get_db()
