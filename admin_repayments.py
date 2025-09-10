@@ -176,9 +176,7 @@ def list_withdrawals():
         return jsonify(results), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# Approve withdrawal
-@admin_repayments_bp.route("/withdrawals/approve/<withdrawal_id>", methods=["PUT", "OPTIONS"])
+@admin_repayments_bp.route("/withdrawals/approve/<withdrawal_id>", methods=["PATCH", "OPTIONS"])
 @cross_origin(origins="https://destinytch.com.ng", supports_credentials=True)
 def approve_withdrawal(withdrawal_id):
     if request.method == "OPTIONS":
@@ -196,18 +194,21 @@ def approve_withdrawal(withdrawal_id):
             new_balance = max(user.get("balance", 0) - withdrawal["amount"], 0)
             users_collection.update_one({"_id": withdrawal["userId"]}, {"$set": {"balance": new_balance}})
 
-        withdrawals_collection.update_one({"_id": ObjectId(withdrawal_id)}, {"$set": {"status": "approved", "updated_at": datetime.utcnow()}})
+        withdrawals_collection.update_one(
+            {"_id": ObjectId(withdrawal_id)},
+            {"$set": {"status": "approved", "updated_at": datetime.utcnow()}}
+        )
+
         return jsonify({"message": "Withdrawal approved", "status": "approved"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-# Reject withdrawal
-@admin_repayments_bp.route("/withdrawals/reject/<withdrawal_id>", methods=["PUT", "OPTIONS"])
+@admin_repayments_bp.route("/withdrawals/reject/<withdrawal_id>", methods=["PATCH", "OPTIONS"])
 @cross_origin(origins="https://destinytch.com.ng", supports_credentials=True)
 def reject_withdrawal(withdrawal_id):
     if request.method == "OPTIONS":
-        return '', 200  # Preflight handled
+        return '', 200
 
     try:
         reason = request.json.get("reason", "No reason provided")
@@ -217,8 +218,11 @@ def reject_withdrawal(withdrawal_id):
         if withdrawal["status"] != "pending":
             return jsonify({"error": "Withdrawal is not pending"}), 400
 
-        withdrawals_collection.update_one({"_id": ObjectId(withdrawal_id)}, {"$set": {"status": "rejected", "admin_notes": reason, "updated_at": datetime.utcnow()}})
+        withdrawals_collection.update_one(
+            {"_id": ObjectId(withdrawal_id)},
+            {"$set": {"status": "rejected", "admin_notes": reason, "updated_at": datetime.utcnow()}}
+        )
+
         return jsonify({"message": "Withdrawal rejected", "status": "rejected", "reason": reason}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
