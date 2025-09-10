@@ -176,7 +176,7 @@ def repayment_history():
 # -----------------------------
 @admin_repayments_bp.route("/withdrawals", methods=["GET"])
 
-def list_withdrawals(current_admin):
+def list_withdrawals():
     try:
         withdrawals = withdrawals_collection.find().sort("requested_at", -1)
         results = []
@@ -204,7 +204,7 @@ def list_withdrawals(current_admin):
 
 @admin_repayments_bp.route("/withdrawals/<withdrawal_id>", methods=["PATCH"])
 
-def update_withdrawal(current_admin, withdrawal_id):
+def update_withdrawal(, withdrawal_id):
     try:
         data = request.json
         status = data.get("status")
@@ -238,7 +238,7 @@ def update_withdrawal(current_admin, withdrawal_id):
 
 @admin_repayments_bp.route("/withdrawals/history", methods=["GET"])
 
-def withdrawals_history(current_admin):
+def withdrawals_history():
     try:
         withdrawals = withdrawals_collection.find().sort("requested_at", -1)
         history = []
