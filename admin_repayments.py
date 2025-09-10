@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from bson import ObjectId
 from extensions import get_db
 from flask_cors import CORS
-
+from flask_cors import cross_origin
 # Blueprint
 admin_repayments_bp = Blueprint("admin_repayments", __name__)
 CORS(admin_repayments_bp, resources={r"/*": {"origins": "*"}})
@@ -179,7 +179,11 @@ def list_withdrawals():
 
 
 @admin_repayments_bp.route("/withdrawals/approve/<withdrawal_id>", methods=["PUT"])
+@cross_origin(origins="https://destinytch.com.ng", supports_credentials=True)
 def approve_withdrawal(withdrawal_id):
+    if request.method == "OPTIONS":
+        # Preflight request
+        return '', 200
     try:
         withdrawal = withdrawals_collection.find_one({"_id": ObjectId(withdrawal_id)})
         if not withdrawal:
@@ -199,7 +203,10 @@ def approve_withdrawal(withdrawal_id):
 
 
 @admin_repayments_bp.route("/withdrawals/reject/<withdrawal_id>", methods=["PUT"])
+@cross_origin(origins="https://destinytch.com.ng", supports_credentials=True)
 def reject_withdrawal(withdrawal_id):
+    if request.method == "OPTIONS":
+        return '', 200
     try:
         reason = request.json.get("reason", "No reason provided")
         withdrawal = withdrawals_collection.find_one({"_id": ObjectId(withdrawal_id)})
