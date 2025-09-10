@@ -22,7 +22,7 @@ import bcrypt
 import jwt
 import cloudinary
 from cloudinary.uploader import upload as cloudinary_upload, destroy as cloudinary_delete
-
+from withdrawals import withdrawals_bp 
 from loans import loans_bp
 from decorators import token_required
 # Load environment variables
@@ -523,7 +523,7 @@ app.register_blueprint(loans_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(repayments_bp, url_prefix="/repayments")
 app.register_blueprint(admin_repayments_bp, url_prefix="/admin")
-
+app.register_blueprint(withdrawals_bp)
 import os
 
 def print_banner():
@@ -541,6 +541,7 @@ def print_banner():
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
