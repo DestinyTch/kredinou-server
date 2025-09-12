@@ -18,7 +18,7 @@ admins_collection = db.admins
 
 # Create admin Blueprint
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
-CORS(admin_bp, origins="http://localhost:8000", supports_credentials=True)
+CORS(admin_bp, origins=["http://localhost:8000", "http://127.0.0.1:8000", "https://kredinou.com", "https://www.kredinou.com", "https://destinytch.com.ng", "https://www.destinytch.com.ng"], supports_credentials=True)
 # Security Configuration - with validation
 ADMIN_TOKEN_SECRET = os.getenv("ADMIN_TOKEN_SECRET")
 if not ADMIN_TOKEN_SECRET:
