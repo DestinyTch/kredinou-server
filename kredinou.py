@@ -627,7 +627,6 @@ def get_active_loan(current_user):
         return jsonify(loan), 200
     return jsonify(message="No active loan found"), 404
 import os
-
 def get_banner():
     banner = r"""
          Kredinou Server v.1 by Destiny Tch
@@ -645,8 +644,16 @@ def root():
     return jsonify(get_banner()), 200
 
 if __name__ == "__main__":
-    print_banner()
+    # Print banner to console
+    info = get_banner()
+    print(info["banner"])
+    print("="*50)
+    print(f"Host: {info['host']} | Port: {info['port']} | Debug: {info['debug']}")
+    print(info["status"])
+    print("="*50)
+    
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
