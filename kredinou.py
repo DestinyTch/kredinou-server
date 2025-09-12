@@ -619,21 +619,26 @@ def get_active_loan(current_user):
     return jsonify(message="No active loan found"), 404
 import os
 
-def print_banner():
+def get_banner():
     banner = r"""
- 
-         Kredinou Server v.1
+         Kredinou Server v.1 by Destiny Tch
 """
-    print(banner)
-    print("="*50)
-    print(f"Host: 0.0.0.0 | Port: 5000 | Debug: {os.getenv('FLASK_DEBUG', True)}")
-    print("All blueprints registered successfully ✅")
-  
-    print("="*50)
+    return {
+        "banner": banner,
+        "host": "0.0.0.0",
+        "port": 5000,
+        "debug": os.getenv("FLASK_DEBUG", True),
+        "status": "All blueprints registered successfully ✅"
+    }
+
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify(get_banner()), 200
 
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
