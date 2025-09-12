@@ -46,6 +46,8 @@ loans_bp = Blueprint('loans', __name__, url_prefix='/api/loans')
 CORS(
     loans_bp,
     resources={r"/api/*": {"origins": [
+        "https://kredinou.com",
+        "https://www.kredinou.com",
         "https://destinytch.com.ng",  # production
         "http://localhost:8000",      # local dev
         "http://127.0.0.1:8000"       # alt dev
