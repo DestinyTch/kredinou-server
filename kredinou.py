@@ -11,6 +11,7 @@ from flask_cors import CORS
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from werkzeug.exceptions import HTTPException
+from wallet import wallet_bp  # adjust path as needed
 from config import Config
 
 from admin import admin_bp
@@ -22,14 +23,17 @@ import bcrypt
 import jwt
 import cloudinary
 from cloudinary.uploader import upload as cloudinary_upload, destroy as cloudinary_delete
-from withdrawals import withdrawals_bp 
+
 from loans import loans_bp
 from decorators import token_required
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app,
+     resources={r"/*": {"origins": ["http://localhost:8000", "http://127.0.0.1:8000", "https://kredinou.com", "https://www.kredinou.com", "https://destinytch.com.ng", "https://www.destinytch.com.ng"]}},
+     supports_credentials=True)
+
 # App config
 app.config.update({
     "SECRET_KEY": os.getenv("SECRET_KEY"),
@@ -143,7 +147,6 @@ def handle_exception(e):
         return jsonify({'error': e.description}), e.code
     app.logger.error(f"Unhandled exception: {str(e)}")
     return jsonify({'error': 'Internal server error'}), 500
-
 # Routes
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -160,7 +163,7 @@ def register():
 
         # Required fields
         required_fields = ['first_name', 'last_name', 'email', 'phone', 'password', 
-                           'department', 'commune', 'address']  # Added new fields
+                           'department', 'commune', 'address']
         missing_fields = [f for f in required_fields if f not in data or not data[f].strip()]
         if missing_fields:
             return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
@@ -193,9 +196,9 @@ def register():
             'email': data['email'].strip().lower(),
             'phone': data['phone'].strip(),
             'password': hash_password(data['password']),
-            'department': data['department'].strip(),  # New
-            'commune': data['commune'].strip(),        # New
-            'address': data['address'].strip(),        # New
+            'department': data['department'].strip(),
+            'commune': data['commune'].strip(),
+            'address': data['address'].strip(),
             'status': 'pending_verification',
             'created_at': datetime.now(timezone.utc),
             'updated_at': datetime.now(timezone.utc),
@@ -205,7 +208,7 @@ def register():
             'verification_status': 'unverified'
         }
 
-        # Handle face image (base64 or file)
+        # --- Handle Face Image ---
         face_image_url = None
         if 'face_image' in data and data['face_image']:
             result = upload_base64_image(
@@ -231,11 +234,11 @@ def register():
         if face_image_url:
             user_data['face_image'] = {'url': face_image_url, 'uploaded_at': datetime.now(timezone.utc)}
 
-        # Handle document upload
+        # --- Handle ID Document ---
         if 'document' in files:
             file = files['document']
             if file and file.filename:
-                allowed_types = ['image/jpeg', 'image/png']
+                allowed_types = ['image/jpeg', 'image/png', 'application/pdf']
                 if file.mimetype not in allowed_types:
                     return jsonify({'error': 'Document must be JPG, PNG, or PDF'}), 400
                 if file.content_length > 5 * 1024 * 1024:
@@ -244,12 +247,35 @@ def register():
                     file,
                     folder=f"users/{user_id}/documents",
                     resource_type="auto",
-                    tags=["id_verification"]
+                    tags=["ID Document"]
                 )
                 user_data['documents'].append({
                     'public_id': result['public_id'],
                     'url': result['secure_url'],
-                    'document_type': 'id_verification',
+                    'document_type': 'ID Verification Document',
+                    'uploaded_at': datetime.now(timezone.utc),
+                    'verified': False
+                })
+
+        # --- Handle Proof of Address ---
+        if 'proof_of_address' in files:
+            file = files['proof_of_address']
+            if file and file.filename:
+                allowed_types = ['image/jpeg', 'image/png', 'application/pdf']
+                if file.mimetype not in allowed_types:
+                    return jsonify({'error': 'Proof of address must be JPG, PNG, or PDF'}), 400
+                if file.content_length > 5 * 1024 * 1024:
+                    return jsonify({'error': 'Proof of address size exceeds 5MB limit'}), 400
+                result = cloudinary_upload(
+                    file,
+                    folder=f"users/{user_id}/documents",
+                    resource_type="auto",
+                    tags=["Proof of Address"]
+                )
+                user_data['documents'].append({
+                    'public_id': result['public_id'],
+                    'url': result['secure_url'],
+                    'document_type': 'Proof of Address',
                     'uploaded_at': datetime.now(timezone.utc),
                     'verified': False
                 })
@@ -260,7 +286,7 @@ def register():
         # Generate JWT token
         token = generate_jwt_token(user_id)
 
-        # Response
+        # Prepare response
         response_data = {
             'success': True,
             'message': 'Registration successful. Account pending verification.',
@@ -271,9 +297,9 @@ def register():
                 'last_name': user_data['last_name'],
                 'email': user_data['email'],
                 'phone': user_data['phone'],
-                'department': user_data['department'],  # New
-                'commune': user_data['commune'],        # New
-                'address': user_data['address'],        # New
+                'department': user_data['department'],
+                'commune': user_data['commune'],
+                'address': user_data['address'],
                 'status': user_data['status'],
                 'verification_status': user_data['verification_status']
             }
@@ -286,6 +312,7 @@ def register():
     except Exception as e:
         app.logger.error(f"Registration error: {str(e)}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred during registration'}), 500
+
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -523,8 +550,9 @@ app.register_blueprint(loans_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(repayments_bp, url_prefix="/repayments")
 app.register_blueprint(admin_repayments_bp, url_prefix="/admin")
-app.register_blueprint(withdrawals_bp)
-app.register_blueprint(admin_withdrawals_bp)
+app.register_blueprint(wallet_bp, url_prefix="/wallet", strict_slashes=False)
+
+
 import os
 
 def print_banner():
