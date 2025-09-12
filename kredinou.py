@@ -577,19 +577,25 @@ def get_profileee(current_user):
 @app.route("/api/profileee/", methods=["PATCH"])
 @token_required
 def update_login_info(current_user):
-    data = request.json
+    data = request.get_json()
+    if not data:
+        return jsonify(error="Invalid or missing JSON body"), 400
+
     update_fields = {}
 
     if "email" in data:
         update_fields["email"] = data["email"]
     if "phone" in data:
         update_fields["phone"] = data["phone"]
-    if data.get("password"):
-        update_fields["password"] = generate_password_hash(data["password"])
+    if "password" in data and data["password"]:
+        update_fields["password"] = generate_password_hash(str(data["password"]))
 
     if update_fields:
         update_fields["updated_at"] = datetime.now(timezone.utc)
-        users_collection.update_one({"_id": current_user["_id"]}, {"$set": update_fields})
+        try:
+            users_collection.update_one({"_id": current_user["_id"]}, {"$set": update_fields})
+        except Exception as e:
+            return jsonify(error=f"Database update failed: {str(e)}"), 500
 
     return jsonify(success=True, message="Login info updated"), 200
 
@@ -628,6 +634,7 @@ def print_banner():
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
