@@ -554,7 +554,63 @@ app.register_blueprint(repayments_bp, url_prefix="/repayments")
 app.register_blueprint(admin_repayments_bp, url_prefix="/admin")
 app.register_blueprint(wallet_bp, url_prefix="/wallet", strict_slashes=False)
 
+@app.route("/api/profileee/", methods=["GET"])
+@token_required
+def get_profile(current_user):
+    profile = {
+        "_id": current_user["_id"],
+        "first_name": current_user.get("first_name"),
+        "middle_name": current_user.get("middle_name"),
+        "last_name": current_user.get("last_name"),
+        "email": current_user.get("email"),
+        "phone": current_user.get("phone"),
+        "department": current_user.get("department"),
+        "commune": current_user.get("commune"),
+        "address": current_user.get("address"),
+        "loan_limit": current_user.get("loan_limit", 0),
+        "face_image": current_user.get("face_image"),
+        "documents": current_user.get("documents", [])
+    }
+    return jsonify(profile), 200
 
+
+@app.route("/api/profileee/", methods=["PATCH"])
+@token_required
+def update_login_info(current_user):
+    data = request.json
+    update_fields = {}
+
+    if "email" in data:
+        update_fields["email"] = data["email"]
+    if "phone" in data:
+        update_fields["phone"] = data["phone"]
+    if data.get("password"):
+        update_fields["password"] = generate_password_hash(data["password"])
+
+    if update_fields:
+        update_fields["updated_at"] = datetime.now(timezone.utc)
+        users_collection.update_one({"_id": current_user["_id"]}, {"$set": update_fields})
+
+    return jsonify(success=True, message="Login info updated"), 200
+
+
+# -------------------------
+# ACTIVE LOAN ROUTE
+# -------------------------
+
+@app.route("/api/loans/activee", methods=["GET"])
+@token_required
+def get_active_loan(current_user):
+    loan = loans_collection.find_one({"user_id": current_user["_id"], "status": "active"})
+    if loan:
+        # Convert dates to ISO format for frontend
+        loan["_id"] = str(loan["_id"])
+        if "applicationDate" in loan:
+            loan["applicationDate"] = {"$date": loan["applicationDate"].isoformat()}
+        if "dueDate" in loan:
+            loan["dueDate"] = {"$date": loan["dueDate"].isoformat()}
+        return jsonify(loan), 200
+    return jsonify(message="No active loan found"), 404
 import os
 
 def print_banner():
