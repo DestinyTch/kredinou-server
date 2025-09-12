@@ -11,8 +11,10 @@ from flask_cors import CORS
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from werkzeug.exceptions import HTTPException
+
 from wallet import wallet_bp  # adjust path as needed
 from config import Config
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from admin import admin_bp
 from repayments import repayments_bp
@@ -33,7 +35,7 @@ app = Flask(__name__)
 CORS(app,
      resources={r"/*": {"origins": ["http://localhost:8000", "http://127.0.0.1:8000", "https://kredinou.com", "https://www.kredinou.com", "https://destinytch.com.ng", "https://www.destinytch.com.ng"]}},
      supports_credentials=True)
-
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 # App config
 app.config.update({
     "SECRET_KEY": os.getenv("SECRET_KEY"),
@@ -570,6 +572,7 @@ def print_banner():
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
