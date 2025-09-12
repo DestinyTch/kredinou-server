@@ -577,28 +577,37 @@ def get_profileee(current_user):
 @app.route("/api/profileee/", methods=["PATCH"])
 @token_required
 def update_login_info(current_user):
-    data = request.get_json()
-    if not data:
-        return jsonify(error="Invalid or missing JSON body"), 400
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify(error="Invalid or missing JSON body"), 400
 
-    update_fields = {}
+        update_fields = {}
+        if "email" in data:
+            update_fields["email"] = data["email"].strip()
+        if "phone" in data:
+            update_fields["phone"] = data["phone"].strip()
+        if "password" in data and data["password"]:
+            update_fields["password"] = generate_password_hash(str(data["password"]))
 
-    if "email" in data:
-        update_fields["email"] = data["email"]
-    if "phone" in data:
-        update_fields["phone"] = data["phone"]
-    if "password" in data and data["password"]:
-        update_fields["password"] = generate_password_hash(str(data["password"]))
+        if not update_fields:
+            return jsonify(message="No fields to update"), 400
 
-    if update_fields:
         update_fields["updated_at"] = datetime.now(timezone.utc)
+
+        # Make sure _id type matches MongoDB
+        _id = current_user["_id"]
         try:
-            users_collection.update_one({"_id": current_user["_id"]}, {"$set": update_fields})
+            users_collection.update_one({"_id": _id}, {"$set": update_fields})
         except Exception as e:
+            app.logger.error(f"DB update failed for user {_id}: {str(e)}")
             return jsonify(error=f"Database update failed: {str(e)}"), 500
 
-    return jsonify(success=True, message="Login info updated"), 200
+        return jsonify(success=True, message="Login info updated"), 200
 
+    except Exception as e:
+        app.logger.exception("Unexpected error in update_login_info")
+        return jsonify(error="Internal server error"), 500
 
 # -------------------------
 # ACTIVE LOAN ROUTE
@@ -638,6 +647,7 @@ def root():
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
