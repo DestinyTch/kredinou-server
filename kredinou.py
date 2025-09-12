@@ -556,7 +556,7 @@ app.register_blueprint(wallet_bp, url_prefix="/wallet", strict_slashes=False)
 
 @app.route("/api/profileee/", methods=["GET"])
 @token_required
-def get_profile(current_user):
+def get_profileee(current_user):
     profile = {
         "_id": current_user["_id"],
         "first_name": current_user.get("first_name"),
@@ -628,6 +628,7 @@ def print_banner():
 if __name__ == "__main__":
     print_banner()
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
