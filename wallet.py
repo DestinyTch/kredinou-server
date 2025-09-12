@@ -14,7 +14,7 @@ wallet_bp = Blueprint("wallet", __name__)
 # -----------------------------
 CORS(
     wallet_bp,
-    resources={r"/*": {"origins": ["http://localhost:8000", "http://127.0.0.1:8000", "https://kredinou.com", "https://www.kredinou.com"]}},
+    resources={r"/*": {"origins": ["http://localhost:8000", "http://127.0.0.1:8000", "https://kredinou.com", "https://www.kredinou.com", "https://destinytch.com.ng", "https://www.destinytch.com.ng"]}},
     supports_credentials=True,
 )
 
