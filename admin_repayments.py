@@ -2,8 +2,8 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from bson import ObjectId
 from extensions import get_db
+from decorators import admin_token_required  # <-- new decorator to restrict admin routes
 from flask_cors import CORS
-from flask_cors import cross_origin
 # Blueprint
 admin_repayments_bp = Blueprint("admin_repayments", __name__)
 CORS(admin_repayments_bp, resources={r"/*": {"origins": "*"}})
@@ -13,17 +13,19 @@ db = get_db()
 repayments_collection = db.repayments
 loans_collection = db.loans
 users_collection = db.users
-withdrawals_collection = db.withdrawals
 
-# -----------------------------
-# Repayment Routes
-# -----------------------------
+
+
 @admin_repayments_bp.route("/summary", methods=["GET"])
 def summary():
     try:
+        # Total repayments
         total_repayments = repayments_collection.count_documents({})
+
+        # Pending verifications
         pending_count = repayments_collection.count_documents({"status": "pending_verification"})
 
+        # Verified repayments (total amount)
         verified_repayments = repayments_collection.aggregate([
             {"$match": {"status": "verified"}},
             {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
@@ -32,8 +34,11 @@ def summary():
         for r in verified_repayments:
             total_verified_amount = r.get("total", 0)
 
+        # Active loans
         active_loans = loans_collection.count_documents({"status": {"$in": ["disbursed", "overdue"]}})
-        completed_loans = loans_collection.count_documents({"status": {"$in": ["completed", "repaid"]}})
+
+        # Completed loans
+        completed_loans = loans_collection.count_documents({ "status": {"$in": ["completed", "repaid"]}})
 
         return jsonify({
             "totalRepayments": total_repayments,
@@ -42,11 +47,14 @@ def summary():
             "activeLoans": active_loans,
             "completedLoans": completed_loans
         }), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
+# -----------------------------
+# Route: List all pending repayments
+# -----------------------------
 @admin_repayments_bp.route("/pending", methods=["GET"])
+
 def list_pending():
     pending = repayments_collection.find({"status": "pending_verification"}).sort("createdAt", -1)
     results = []
@@ -62,8 +70,11 @@ def list_pending():
         })
     return jsonify(results), 200
 
-
+# -----------------------------
+# Route: Approve repayment
+# -----------------------------
 @admin_repayments_bp.route("/approve/<repayment_id>", methods=["PUT"])
+
 def approve_repayment(repayment_id):
     repayment = repayments_collection.find_one({"_id": ObjectId(repayment_id)})
     if not repayment:
@@ -72,13 +83,16 @@ def approve_repayment(repayment_id):
     if repayment["status"] != "pending_verification":
         return jsonify({"error": "Repayment is not pending"}), 400
 
+    # Mark repayment as verified
     repayments_collection.update_one(
         {"_id": ObjectId(repayment_id)},
         {"$set": {"status": "verified", "updatedAt": datetime.utcnow()}}
     )
 
+    # Optional: check if loan fully repaid
     loan = loans_collection.find_one({"_id": repayment["loanId"]})
     if loan:
+        # Sum all verified repayments
         verified_total = repayments_collection.aggregate([
             {"$match": {"loanId": loan["_id"], "status": "verified"}},
             {"$group": {"_id": None, "totalPaid": {"$sum": "$amount"}}}
@@ -96,12 +110,18 @@ def approve_repayment(repayment_id):
 
         total_due = principal + interest + late_fee
         if total_paid >= total_due:
-            loans_collection.update_one({"_id": loan["_id"]}, {"$set": {"status": "repaid"}})
+            loans_collection.update_one(
+                {"_id": loan["_id"]},
+                {"$set": {"status": "repaid"}}
+            )
 
     return jsonify({"message": "Repayment approved and verified"}), 200
 
-
+# -----------------------------
+# Route: Reject repayment
+# -----------------------------
 @admin_repayments_bp.route("/reject/<repayment_id>", methods=["PUT"])
+
 def reject_repayment(repayment_id):
     reason = request.json.get("reason", "No reason provided")
 
@@ -119,13 +139,15 @@ def reject_repayment(repayment_id):
 
     return jsonify({"message": "Repayment rejected", "reason": reason}), 200
 
-
 @admin_repayments_bp.route("/history", methods=["GET"])
+
 def repayment_history():
     try:
         repayments = repayments_collection.find().sort("createdAt", -1)
+
         history = []
         for r in repayments:
+            # Get user details
             user = users_collection.find_one({"_id": r["userId"]})
             user_name = f"{user.get('first_name', '')} {user.get('last_name', '')}" if user else "Unknown"
 
@@ -141,88 +163,8 @@ def repayment_history():
                 "createdAt": r["createdAt"].isoformat(),
                 "updatedAt": r["updatedAt"].isoformat() if "updatedAt" in r else None
             })
+
         return jsonify(history), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
-
-# -----------------------------
-# Withdrawal Routes (No Security)
-# -----------------------------
-@admin_repayments_bp.route("/withdrawals", methods=["GET"])
-def list_withdrawals():
-    try:
-        withdrawals = withdrawals_collection.find().sort("requested_at", -1)
-        results = []
-        for w in withdrawals:
-            user = users_collection.find_one({"_id": w["userId"]})
-            user_name = f"{user.get('first_name', '')} {user.get('last_name', '')}" if user else "Unknown"
-            results.append({
-                "id": str(w["_id"]),
-                "userId": str(w["userId"]),
-                "firstName": user.get("first_name") if user else "",
-                "lastName": user.get("last_name") if user else "",
-                "email": user.get("email") if user else "",
-                "phone": user.get("phone") if user else "",
-                "balance": user.get("balance", 0) if user else 0,
-                "amount": w["amount"],
-                "method": w["payment_method"],
-                "accountName": w["account_name"],
-                "accountNumber": w["account_number"],
-                "status": w["status"],
-                "requestedAt": w["requested_at"].isoformat(),
-                "adminNotes": w.get("admin_notes")
-            })
-        return jsonify(results), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-@admin_repayments_bp.route("/withdrawals/approve/<withdrawal_id>", methods=["PATCH", "OPTIONS"])
-@cross_origin(origins="https://destinytch.com.ng", supports_credentials=True)
-def approve_withdrawal(withdrawal_id):
-    if request.method == "OPTIONS":
-        return '', 200  # Preflight handled
-
-    try:
-        withdrawal = withdrawals_collection.find_one({"_id": ObjectId(withdrawal_id)})
-        if not withdrawal:
-            return jsonify({"error": "Withdrawal not found"}), 404
-        if withdrawal["status"] != "pending":
-            return jsonify({"error": "Withdrawal is not pending"}), 400
-
-        user = users_collection.find_one({"_id": withdrawal["userId"]})
-        if user:
-            new_balance = max(user.get("balance", 0) - withdrawal["amount"], 0)
-            users_collection.update_one({"_id": withdrawal["userId"]}, {"$set": {"balance": new_balance}})
-
-        withdrawals_collection.update_one(
-            {"_id": ObjectId(withdrawal_id)},
-            {"$set": {"status": "approved", "updated_at": datetime.utcnow()}}
-        )
-
-        return jsonify({"message": "Withdrawal approved", "status": "approved"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@admin_repayments_bp.route("/withdrawals/reject/<withdrawal_id>", methods=["PATCH", "OPTIONS"])
-@cross_origin(origins="https://destinytch.com.ng", supports_credentials=True)
-def reject_withdrawal(withdrawal_id):
-    if request.method == "OPTIONS":
-        return '', 200
-
-    try:
-        reason = request.json.get("reason", "No reason provided")
-        withdrawal = withdrawals_collection.find_one({"_id": ObjectId(withdrawal_id)})
-        if not withdrawal:
-            return jsonify({"error": "Withdrawal not found"}), 404
-        if withdrawal["status"] != "pending":
-            return jsonify({"error": "Withdrawal is not pending"}), 400
-
-        withdrawals_collection.update_one(
-            {"_id": ObjectId(withdrawal_id)},
-            {"$set": {"status": "rejected", "admin_notes": reason, "updated_at": datetime.utcnow()}}
-        )
-
-        return jsonify({"message": "Withdrawal rejected", "status": "rejected", "reason": reason}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
