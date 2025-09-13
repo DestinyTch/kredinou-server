@@ -236,3 +236,61 @@ def get_user_loans(user_id):
     except Exception as exc:
         current_app.logger.exception("get_user_loans error")
         return _error("Internal server error", 500)
+
+@users_bp.route("/<user_id>/verify-face", methods=["POST"])
+def verify_user_face(user_id):
+    """
+    POST /users/<user_id>/verify-face
+    Marks the user's face as verified.
+    """
+    try:
+        query_id = _to_objectid_or_raw(user_id)
+        user = users_col.find_one({"_id": query_id})
+        if not user:
+            return _error("User not found", 404)
+
+        # Ensure the face_image exists
+        if not user.get("face_image") or not user["face_image"].get("url"):
+            return _error("No face image uploaded for this user", 400)
+
+        # Update the face_image verified field
+        update_result = users_col.update_one(
+            {"_id": query_id},
+            {"$set": {"face_image.verified": True, "face_image.verified_at": datetime.utcnow()}}
+        )
+
+        # Return the updated user
+        updated_user = users_col.find_one({"_id": query_id})
+        return jsonify(serialize_doc(updated_user)), 200
+
+    except Exception as exc:
+        current_app.logger.exception("verify_user_face error")
+        return _error("Internal server error", 500)
+# ------------------------
+# VERIFY DOCUMENT
+# ------------------------
+@users_bp.route("/documents/<doc_id>/verify", methods=["POST"])
+def verify_document(doc_id):
+    """
+    POST /documents/<doc_id>/verify
+    Marks a document as verified.
+    """
+    try:
+        doc_oid = _to_objectid_or_raw(doc_id)
+        doc = documents_col.find_one({"_id": doc_oid})
+        if not doc:
+            return _error("Document not found", 404)
+
+        # Update verification status
+        documents_col.update_one(
+            {"_id": doc_oid},
+            {"$set": {"verified": True, "verified_at": datetime.utcnow()}}
+        )
+
+        # Return the updated document
+        updated_doc = documents_col.find_one({"_id": doc_oid})
+        return jsonify(serialize_doc(updated_doc)), 200
+
+    except Exception as exc:
+        current_app.logger.exception("verify_document error")
+        return _error("Internal server error", 500)
