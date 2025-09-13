@@ -28,6 +28,39 @@ CORS(
     },
     supports_credentials=True
 )
+import cloudinary
+import cloudinary.uploader
+import uuid
+import os
+
+# -----------------------------
+# Cloudinary configuration
+# -----------------------------
+cloudinary.config(
+    cloud_name="dtgtadxgq",
+    api_key="725813336421935",
+    api_secret="ZAEcNd5qQ2KGtgbSTrlMscm9cnA",
+    secure=True
+)
+
+# -----------------------------
+# Helper: Upload file to Cloudinary
+# -----------------------------
+def cloudinary_upload(file_obj, folder="default_folder", public_id=None):
+    """
+    Uploads a file object to Cloudinary and returns the result dict.
+    """
+    if not public_id:
+        public_id = str(uuid.uuid4())
+    result = cloudinary.uploader.upload(
+        file_obj,
+        folder=folder,
+        public_id=public_id,
+        overwrite=True,
+        resource_type="image"
+    )
+    return result
+
 # -----------------------------
 # Mongo collections
 # -----------------------------
