@@ -16,7 +16,7 @@ from users import users_bp
 from wallet import wallet_bp  # adjust path as needed
 from config import Config
 from werkzeug.middleware.proxy_fix import ProxyFix
-
+from dashboard import dashboard_bp
 from admin import admin_bp
 from repayments import repayments_bp
 from admin_repayments import admin_repayments_bp
@@ -583,6 +583,8 @@ app.register_blueprint(wallet_bp, url_prefix="/wallet", strict_slashes=False)
 app.register_blueprint(users_bp)
 app.register_blueprint(manager_bp, url_prefix="/admin") 
 @app.route("/api/profileee/", methods=["GET"])
+app.register_blueprint(dashboard_bp)
+
 @token_required
 def get_profileee(current_user):
     profile = {
@@ -681,6 +683,7 @@ if __name__ == "__main__":
     print("="*50)
     
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
