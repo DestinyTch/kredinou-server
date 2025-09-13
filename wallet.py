@@ -207,7 +207,6 @@ def withdrawal_history():
         return jsonify(history)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 # -----------------------------
 # Admin Routes (Open, no auth)
 # -----------------------------
@@ -232,9 +231,7 @@ def admin_get_withdrawals():
                 if wallet:
                     loan = loans_collection.find_one({"_id": wallet["loanId"]})
                     if loan:
-                        # Store loan ID trimmed for display
                         loan_ids.append(str(loan["_id"])[:8] + "...")
-                        # Get full name from loan document
                         if "user" in loan and "fullName" in loan["user"]:
                             full_name = loan["user"]["fullName"]
 
@@ -248,7 +245,8 @@ def admin_get_withdrawals():
                 "accountNumber": w.get("accountNumber"),
                 "service": w.get("service"),
                 "status": w.get("status"),
-                "createdAt": created_at.isoformat() if created_at else None
+                "createdAt": created_at.isoformat() if created_at else None,
+                "qrUrl": w.get("qrUrl")  # <-- Include QR Cloudinary URL if exists
             })
 
         return jsonify(all_requests)
