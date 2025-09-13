@@ -86,15 +86,27 @@ def make_withdrawal():
     if request.method == "OPTIONS":
         return '', 200
 
-    data = request.get_json()
-    user_id = data.get("userId")
-    amount = data.get("amount")
-    account_name = data.get("accountName")
-    account_number = data.get("accountNumber")
-    service = data.get("service")
+    # Determine if the request is JSON (transfer) or FormData (QR)
+    if request.content_type.startswith("application/json"):
+        data = request.get_json()
+        user_id = data.get("userId")
+        amount = data.get("amount")
+        account_name = data.get("accountName")
+        account_number = data.get("accountNumber")
+        service = data.get("service")
+        qr_file = None
+    else:
+        # form-data (QR upload)
+        user_id = request.form.get("userId")
+        amount = request.form.get("amount")
+        service = request.form.get("service")
+        qr_file = request.files.get("qrFile")
+        account_name = None
+        account_number = None
 
-    if not all([user_id, amount, account_name, account_number, service]):
-        return jsonify({"error": "userId, amount, accountName, accountNumber, and service are required"}), 400
+    # Validation
+    if not all([user_id, amount, service]):
+        return jsonify({"error": "userId, amount, and service are required"}), 400
 
     try:
         amount = float(amount)
@@ -112,9 +124,9 @@ def make_withdrawal():
         return jsonify({"error": f"Amount exceeds total wallet balance ({total_balance})"}), 400
 
     remaining_amount = amount
-    deducted_per_wallet = {}  # Track exactly how much is deducted from each wallet
+    deducted_per_wallet = {}
 
-    # Deduct across wallets
+    # Deduct from wallets
     for wallet in wallets:
         w_balance = wallet.get("balance", 0)
         if w_balance >= remaining_amount:
@@ -127,7 +139,6 @@ def make_withdrawal():
             remaining_amount = 0
             break
         else:
-            # Deduct entire wallet balance
             wallets_collection.update_one(
                 {"_id": wallet["_id"]},
                 {"$set": {"balance": 0, "updatedAt": datetime.utcnow()}}
@@ -135,27 +146,37 @@ def make_withdrawal():
             deducted_per_wallet[str(wallet["_id"])] = w_balance
             remaining_amount -= w_balance
 
-    # Create withdrawal record including exact wallet deductions
+    # Upload QR to Cloudinary if present
+    qr_url = None
+    if qr_file:
+        try:
+            result = cloudinary_upload(qr_file, folder="withdrawals_qr", public_id=str(uuid.uuid4()))
+            qr_url = result.get("secure_url")
+        except Exception as e:
+            return jsonify({"error": f"QR upload failed: {str(e)}"}), 500
+
+    # Create withdrawal record
     withdrawal = {
         "userId": user_id,
-        "walletDeductions": deducted_per_wallet,  # store exact amounts per wallet
+        "walletDeductions": deducted_per_wallet,
         "amount": amount,
         "accountName": account_name,
         "accountNumber": account_number,
         "service": service,
+        "qrUrl": qr_url,
         "status": "pending",
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
     }
     result = withdrawals_collection.insert_one(withdrawal)
 
-    # Recalculate total balance after deduction
     total_balance_after = sum(w.get("balance", 0) for w in wallets_collection.find({"userId": user_id}))
 
     return jsonify({
         "message": "Withdrawal request submitted successfully",
         "withdrawalId": str(result.inserted_id),
-        "newBalance": total_balance_after
+        "newBalance": total_balance_after,
+        "qrUrl": qr_url
     }), 201
 
 # -----------------------------
