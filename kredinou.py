@@ -554,6 +554,7 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(repayments_bp, url_prefix="/repayments")
 app.register_blueprint(admin_repayments_bp, url_prefix="/admin")
 app.register_blueprint(wallet_bp, url_prefix="/wallet", strict_slashes=False)
+app.register_blueprint(users_bp)
 app.register_blueprint(manager_bp, url_prefix="/admin") 
 @app.route("/api/profileee/", methods=["GET"])
 @token_required
@@ -654,6 +655,7 @@ if __name__ == "__main__":
     print("="*50)
     
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
