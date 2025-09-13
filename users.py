@@ -88,14 +88,46 @@ def _error(msg, status=400):
 def get_users():
     """
     GET /users/
-    Return all users (serialized). No pagination by design.
+    Return all users with `loans_count` included.
     """
     try:
-        cursor = users_col.find({})
+        pipeline = [
+            # Lookup loans per user
+            {
+                "$lookup": {
+                    "from": "loans",
+                    "let": {"uid": "$_id"},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$or": [
+                                        {"$eq": ["$userId", "$$uid"]},  # ObjectId match
+                                        {"$eq": ["$userId", {"$toString": "$$uid"}]}  # string match
+                                    ]
+                                }
+                            }
+                        },
+                        {"$count": "count"}
+                    ],
+                    "as": "_loanCount"
+                }
+            },
+            # Add loans_count field
+            {
+                "$addFields": {
+                    "loans_count": {"$ifNull": [{"$arrayElemAt": ["$_loanCount.count", 0]}, 0]}
+                }
+            },
+            # Remove temporary array
+            {"$project": {"_loanCount": 0}}
+        ]
+
+        cursor = users_col.aggregate(pipeline)
         users = [serialize_doc(d) for d in cursor]
         return jsonify(users), 200
     except Exception as exc:
-        current_app.logger.exception("get_users error")
+        current_app.logger.exception("get_users aggregation error")
         return _error("Internal server error", 500)
 
 
