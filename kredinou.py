@@ -380,7 +380,7 @@ def get_profile(current_user):
 
 
 
-@app.route.route("/<user_id>", methods=["DELETE"])
+@app.route("/<user_id>", methods=["DELETE"])
 def delete_user(user_id):
     """Delete user and cascade related records"""
     try:
@@ -681,6 +681,7 @@ if __name__ == "__main__":
     print("="*50)
     
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
