@@ -12,6 +12,7 @@ from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from werkzeug.exceptions import HTTPException
 from manager import manager_bp  # main directory
+from users import users_bp 
 from wallet import wallet_bp  # adjust path as needed
 from config import Config
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -653,6 +654,7 @@ if __name__ == "__main__":
     print("="*50)
     
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
