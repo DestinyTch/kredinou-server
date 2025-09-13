@@ -378,6 +378,32 @@ def get_profile(current_user):
     except Exception as e:
         return jsonify(error="Internal server error"), 500
 
+
+
+@app.route.route("/<user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    """Delete user and cascade related records"""
+    try:
+        query_id = _to_objectid_or_raw(user_id)
+        user = users_col.find_one({"_id": query_id})
+        if not user:
+            return _error("User not found", 404)
+
+        matches = [{"userId": user_id}]
+        try:
+            matches.append({"userId": ObjectId(user_id)})
+        except Exception:
+            pass
+
+        loans_col.delete_many({"$or": matches})
+        repayments_col.delete_many({"$or": matches})
+        withdrawals_col.delete_many({"$or": matches})
+
+        users_col.delete_one({"_id": query_id})
+        return jsonify({"message": "User and related records deleted"}), 200
+    except Exception as exc:
+        current_app.logger.exception("delete_user error")
+        return _error("Internal server error", 500)
 # Update phone number
 @app.route("/api/profile/phone", methods=["PUT"])
 @token_required
@@ -655,6 +681,7 @@ if __name__ == "__main__":
     print("="*50)
     
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
