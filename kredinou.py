@@ -16,7 +16,7 @@ from users import users_bp
 from wallet import wallet_bp  # adjust path as needed
 from config import Config
 from werkzeug.middleware.proxy_fix import ProxyFix
-
+from dashboard import dashboard_bp
 from admin import admin_bp
 from repayments import repayments_bp
 from admin_repayments import admin_repayments_bp
@@ -577,6 +577,7 @@ def emergency_admin():
 
 app.register_blueprint(loans_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(dashboard_bp)
 app.register_blueprint(repayments_bp, url_prefix="/repayments")
 app.register_blueprint(admin_repayments_bp, url_prefix="/admin")
 app.register_blueprint(wallet_bp, url_prefix="/wallet", strict_slashes=False)
