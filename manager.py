@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 from datetime import datetime
 from bson import ObjectId
@@ -17,9 +17,6 @@ CORS(manager_bp, resources={r"/*": {"origins": [
 from extensions import get_db
 db = get_db()
 users_col = db.users
-loans_col = db.loans
-repayments_col = db.repayments
-withdrawals_col = db.withdrawals
 
 # Helper to serialize MongoDB documents
 def serialize_doc(doc):
@@ -31,46 +28,63 @@ def serialize_doc(doc):
     return doc
 
 # ------------------------
-# Dashboard summary endpoint
+# USERS ENDPOINTS
 # ------------------------
-@manager_bp.route("/dashboard/summary", methods=["GET"])
-def dashboard_summary():
-    total_users = users_col.count_documents({})
-    total_loans = loans_col.count_documents({})
-    total_loan_amount = sum([loan["amount"] for loan in loans_col.find({})])
-    total_repayments = sum([rep["amount"] for rep in repayments_col.find({})])
-    total_withdrawals = sum([wd["amount"] for wd in withdrawals_col.find({})])
 
-    return jsonify({
-        "total_users": total_users,
-        "total_loans": total_loans,
-        "total_loan_amount": total_loan_amount,
-        "total_repayments": total_repayments,
-        "total_withdrawals": total_withdrawals
-    })
+# GET all users
+@manager_bp.route("/users", methods=["GET"])
+def get_users():
+    try:
+        users = list(users_col.find({}))
+        users = [serialize_doc(u) for u in users]
+        return jsonify(users), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-# ------------------------
-# Dashboard chart endpoint
-# ------------------------
-@manager_bp.route("/dashboard/chart-data", methods=["GET"])
-def dashboard_chart_data():
-    """Return daily aggregates for loans, repayments, withdrawals"""
-    def aggregate_by_date(col, field="amount"):
-        pipeline = [
-            {"$group": {
-                "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$createdAt"}},
-                "total": {"$sum": f"${field}"}
-            }},
-            {"$sort": {"_id": 1}}
-        ]
-        return list(col.aggregate(pipeline))
 
-    loans_data = aggregate_by_date(loans_col, "amount")
-    repayments_data = aggregate_by_date(repayments_col, "amount")
-    withdrawals_data = aggregate_by_date(withdrawals_col, "amount")
+# GET single user by ID
+@manager_bp.route("/users/<user_id>", methods=["GET"])
+def get_user(user_id):
+    try:
+        user = users_col.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify(serialize_doc(user)), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return jsonify({
-        "loans": loans_data,
-        "repayments": repayments_data,
-        "withdrawals": withdrawals_data
-    })
+
+# UPDATE user (e.g., update email or phone)
+@manager_bp.route("/users/<user_id>", methods=["PUT"])
+def update_user(user_id):
+    try:
+        data = request.get_json()
+        update_fields = {}
+        if "email" in data:
+            update_fields["email"] = data["email"]
+        if "phone" in data:
+            update_fields["phone"] = data["phone"]
+
+        if not update_fields:
+            return jsonify({"error": "No valid fields to update"}), 400
+
+        result = users_col.update_one({"_id": ObjectId(user_id)}, {"$set": update_fields})
+        if result.matched_count == 0:
+            return jsonify({"error": "User not found"}), 404
+
+        updated_user = users_col.find_one({"_id": ObjectId(user_id)})
+        return jsonify(serialize_doc(updated_user)), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# DELETE user
+@manager_bp.route("/users/<user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    try:
+        result = users_col.delete_one({"_id": ObjectId(user_id)})
+        if result.deleted_count == 0:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify({"message": "User deleted"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
